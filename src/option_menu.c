@@ -25,7 +25,8 @@ enum
     MENUITEM_SOUND,
     MENUITEM_BUTTONMODE,
     MENUITEM_FRAMETYPE,
-    MENUITEM_CANCEL,
+    MENUITEM_EXP_SHARE,
+    //MENUITEM_CANCEL,
     MENUITEM_COUNT
 };
 
@@ -147,9 +148,21 @@ static const struct BgTemplate sOptionMenuBgTemplates[] =
 };
 
 static const u16 sOptionMenuPalette[] = INCBIN_U16("graphics/misc/option_menu.gbapal");
-static const u16 sOptionMenuItemCounts[MENUITEM_COUNT]     = {4, 1, 3, 2, 3, 11, 0};
+
+static const u16 sOptionMenuItemCounts[MENUITEM_COUNT]     = {
+    [MENUITEM_TEXTSPEED]   =  4,
+    [MENUITEM_BATTLESCENE] =  1,
+    [MENUITEM_BATTLESTYLE] =  3,
+    [MENUITEM_SOUND]       =  2,
+    [MENUITEM_BUTTONMODE]  =  3,
+    [MENUITEM_FRAMETYPE]   = 11,
+    [MENUITEM_EXP_SHARE]   =  2,
+    //[MENUITEM_CANCEL]      =  0,
+};
+
 static const u16 sOptionSubMenuItemCounts[MENUITEM_COUNT2] = {4, 2, 2, 2, 4,  2, 0};
 
+const u8 sText_ExpShare[] = _("GEN 6+ EXP SHARE");
 static const u8 *const sOptionMenuItemsNames[MENUITEM_COUNT] =
 {
     [MENUITEM_TEXTSPEED]   = gText_TextSpeed,
@@ -158,7 +171,8 @@ static const u8 *const sOptionMenuItemsNames[MENUITEM_COUNT] =
     [MENUITEM_SOUND]       = gText_Sound,
     [MENUITEM_BUTTONMODE]  = gText_ButtonMode,
     [MENUITEM_FRAMETYPE]   = gText_Frame,
-    [MENUITEM_CANCEL]      = gText_OptionMenuSaveAndExit,
+    [MENUITEM_EXP_SHARE]   = sText_ExpShare,
+    //[MENUITEM_CANCEL]      = gText_OptionMenuSaveAndExit,
 };
 
 static const u8 *const sOptionSubmenuItemsNames[MENUITEM_COUNT2] =
@@ -208,6 +222,15 @@ static const u8 *const sSoundOptions[] =
 {
     gText_SoundMono, 
     gText_SoundStereo
+};
+
+const u8 sText_ExpShare_Gen3[] = _("DISABLED");
+const u8 sText_ExpShare_Gen6[] = _("ENABLED");
+
+static const u8 *const sExpShareOptions[] =
+{
+    sText_ExpShare_Gen3, 
+    sText_ExpShare_Gen6
 };
 
 static const u8 *const sButtonTypeOptions[] =
@@ -286,6 +309,7 @@ void CB2_OptionsMenuFromStartMenu(void)
     sOptionMenuPtr->option[MENUITEM_SOUND] = gSaveBlock2Ptr->optionsSound;
     sOptionMenuPtr->option[MENUITEM_BUTTONMODE] = gSaveBlock2Ptr->optionsButtonMode;
     sOptionMenuPtr->option[MENUITEM_FRAMETYPE] = gSaveBlock2Ptr->optionsWindowFrameType;
+    sOptionMenuPtr->option[MENUITEM_EXP_SHARE] = gSaveBlock2Ptr->expShare;
     sOptionMenuPtr->subOption[MENUITEM_BATTLETRANSITIONS] = gSaveBlock2Ptr->optionsBattleTransitions;
     sOptionMenuPtr->subOption[MENUITEM_BATTLE_SPEED] = VarGet(B_BATTLE_SPEED);
     sOptionMenuPtr->subOption[MENUITEM_BATTLEINTROANIM] = gSaveBlock2Ptr->optionsBattleIntroAnim;
@@ -418,11 +442,11 @@ static void OptionMenu_PickSwitchCancel(void)
             x = 0xE4 - GetStringWidth(FONT_SMALL, gText_PickSwitchCancelA, 0);
             AddTextPrinterParameterized3(2, FONT_SMALL, x, 0, sOptionMenuPickSwitchCancelTextColor, 0, gText_PickSwitchCancelA);
         }
-        else if(sOptionMenuPtr->cursorPos == MENUITEM_CANCEL)
+        /*else if(sOptionMenuPtr->cursorPos == MENUITEM_CANCEL)
         {
             x = 0xE4 - GetStringWidth(FONT_SMALL, gText_PickSwitchExit, 0);
             AddTextPrinterParameterized3(2, FONT_SMALL, x, 0, sOptionMenuPickSwitchCancelTextColor, 0, gText_PickSwitchExit);
-        }
+        }*/
         else
         {
             x = 0xE4 - GetStringWidth(FONT_SMALL, gText_PickSwitchCancel, 0);
@@ -606,7 +630,7 @@ static u8 OptionMenu_ProcessInput(void)
         if(!sOptionMenuPtr->inSubMenu)
         {
             if (sOptionMenuPtr->cursorPos == MENUITEM_TEXTSPEED)
-                sOptionMenuPtr->cursorPos = MENUITEM_CANCEL;
+                sOptionMenuPtr->cursorPos = MENUITEM_COUNT - 1;
             else
                 sOptionMenuPtr->cursorPos = sOptionMenuPtr->cursorPos - 1;
         }
@@ -624,7 +648,7 @@ static u8 OptionMenu_ProcessInput(void)
     {
         if(!sOptionMenuPtr->inSubMenu)
         {
-            if (sOptionMenuPtr->cursorPos == MENUITEM_CANCEL)
+            if (sOptionMenuPtr->cursorPos == MENUITEM_COUNT - 1)
                 sOptionMenuPtr->cursorPos = MENUITEM_TEXTSPEED;
             else
                 sOptionMenuPtr->cursorPos = sOptionMenuPtr->cursorPos + 1;
@@ -645,7 +669,7 @@ static u8 OptionMenu_ProcessInput(void)
         {
             if(sOptionMenuPtr->cursorPos == MENUITEM_BATTLESCENE)
                 return 6;
-            if(sOptionMenuPtr->cursorPos == MENUITEM_CANCEL)
+            if(sOptionMenuPtr->cursorPos == MENUITEM_COUNT - 1)
                 return 1;
         }
         else
@@ -694,6 +718,9 @@ static void BufferOptionMenuString(u8 selection)
                 break;
             case MENUITEM_BUTTONMODE:
                 AddTextPrinterParameterized3(1, FONT_NORMAL, x, y, dst, -1, sButtonTypeOptions[sOptionMenuPtr->option[selection]]);
+                break;
+            case MENUITEM_EXP_SHARE:
+                AddTextPrinterParameterized3(1, FONT_NORMAL, x, y, dst, -1, sExpShareOptions[sOptionMenuPtr->option[selection]]);
                 break;
             case MENUITEM_FRAMETYPE:
                 StringCopy(str, gText_FrameType);
@@ -746,6 +773,7 @@ static void CloseAndSaveOptionMenu(u8 taskId)
     gSaveBlock2Ptr->optionsBattleStyle = sOptionMenuPtr->option[MENUITEM_BATTLESTYLE];
     gSaveBlock2Ptr->optionsSound = sOptionMenuPtr->option[MENUITEM_SOUND];
     gSaveBlock2Ptr->optionsButtonMode = sOptionMenuPtr->option[MENUITEM_BUTTONMODE];
+    gSaveBlock2Ptr->expShare = sOptionMenuPtr->option[MENUITEM_EXP_SHARE];
     gSaveBlock2Ptr->optionsWindowFrameType = sOptionMenuPtr->option[MENUITEM_FRAMETYPE];
 
     gSaveBlock2Ptr->optionsBattleTransitions = sOptionMenuPtr->subOption[MENUITEM_BATTLETRANSITIONS];
