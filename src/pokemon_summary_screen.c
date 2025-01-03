@@ -157,7 +157,7 @@ struct PokemonSummaryScreenData
     u16 bg3TilemapBuffer[0x800];
     u8 ALIGNED(4) windowIds[7];
 
-    u8 ALIGNED(4) unk3008;
+    u8 ALIGNED(4) statType;
     u8 ALIGNED(4) ballIconSpriteId;
     u8 ALIGNED(4) monPicSpriteId;
     u8 ALIGNED(4) monIconSpriteId;
@@ -983,6 +983,14 @@ static const u16 * const sHpBarPals[] =
     }                                 \
 }
 
+//IVs/Evs Viewer
+enum{
+    STAT_TYPE_RAW,
+    STAT_TYPE_IVS,
+    STAT_TYPE_EVS,
+    NUM_STAT_TYPES,
+};
+
 void ShowPokemonSummaryScreen(struct Pokemon * party, u8 cursorPos, u8 lastIdx, MainCallback savedCallback, u8 mode)
 {
     sMonSummaryScreen = AllocZeroed(sizeof(struct PokemonSummaryScreenData));
@@ -1045,6 +1053,7 @@ void ShowPokemonSummaryScreen(struct Pokemon * party, u8 cursorPos, u8 lastIdx, 
 
     sMonSummaryScreen->unk3228 = 0;
     sMonSummaryScreen->unk322C = 1;
+    sMonSummaryScreen->statType = STAT_TYPE_RAW;
 
     BufferSelectedMonData(&sMonSummaryScreen->currentMon);
     sMonSummaryScreen->isEgg = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_IS_EGG);
@@ -1106,6 +1115,21 @@ bool32 IsPageFlipInput(u8 direction)
     }
 
     return FALSE;
+}
+
+static void TooglePokerus(void){
+    u8 index = GetLastViewedMonIndex();
+    struct Pokemon * partyMons = sMonSummaryScreen->monList.mons;
+    struct Pokemon * mon = &partyMons[index];
+
+    bool8 isPokerusInfected = GetMonData(mon, MON_DATA_POKERUS, NULL); //CheckPartyPokerus(partyMons, index);
+    bool8 newPokerusValue;
+
+    if(isPokerusInfected)
+        newPokerusValue = FALSE;
+    else
+        newPokerusValue = 255;
+    SetMonData(mon, MON_DATA_POKERUS, &newPokerusValue);
 }
 
 static void Task_InputHandler_Info(u8 taskId)
@@ -1189,8 +1213,22 @@ static void Task_InputHandler_Info(u8 taskId)
             {
                 if (sMonSummaryScreen->curPageIndex == PSS_PAGE_INFO)
                 {
+                    //Toogle Pokerus
                     PlaySE(SE_SELECT);
-                    sMonSummaryScreen->state3270 = PSS_STATE3270_ATEXIT_FADEOUT;
+                    TooglePokerus();
+                    CreateTask(Task_PokeSum_SwitchDisplayedPokemon, 0);
+                    sMonSummaryScreen->state3270 = PSS_STATE3270_HANDLEINPUT;
+                }
+                else if (sMonSummaryScreen->curPageIndex == PSS_PAGE_SKILLS)
+                {
+                    //Change Stat to show
+                    PlaySE(SE_SELECT);
+                    if(sMonSummaryScreen->statType < NUM_STAT_TYPES - 1)
+                        sMonSummaryScreen->statType++;
+                    else
+                        sMonSummaryScreen->statType = STAT_TYPE_RAW;
+                    CreateTask(Task_PokeSum_SwitchDisplayedPokemon, 0);
+                    sMonSummaryScreen->state3270 = PSS_STATE3270_HANDLEINPUT;
                 }
                 else if (sMonSummaryScreen->curPageIndex == PSS_PAGE_MOVES)
                 {
@@ -1199,8 +1237,8 @@ static void Task_InputHandler_Info(u8 taskId)
                     PokeSum_RemoveWindows(sMonSummaryScreen->curPageIndex);
                     sMonSummaryScreen->curPageIndex++;
                     sMonSummaryScreen->state3270 = PSS_STATE3270_FLIPPAGES;
+                    return;
                 }
-                return;
             }
             else if (JOY_NEW(B_BUTTON))
             {
@@ -2165,12 +2203,13 @@ static void BufferMonSkills(void)
     u16 type;
     u16 species;
     u16 hp;
-    u16 statValue;
+    u16 statValue, statValue_Atk, statValue_Def, statValue_SpAtk, statValue_SpDef, statValue_Speed;
     u32 exp;
     u32 expToNextLevel;
     u8 plusStat = 0; //0 = none; 1 = Atk; 2 = Def; 3 = Speed; 4 = SpA; 5 = SpD
     u8 minusStat = 0;
     u8 nature = GetNature(&sMonSummaryScreen->currentMon);
+    u8 statType = sMonSummaryScreen->statType;
 
     switch(nature)
     {
@@ -2244,20 +2283,60 @@ static void BufferMonSkills(void)
             break;
     }
 
-    hp = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_HP);
-    ConvertIntToDecimalStringN(sMonSummaryScreen->summary.curHpStrBuf, hp, STR_CONV_MODE_LEFT_ALIGN, 3);
-    StringAppend(sMonSummaryScreen->summary.curHpStrBuf, gText_Slash);
+    switch(statType){
+        default:
+        case STAT_TYPE_RAW:
+            hp = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_HP);
+            ConvertIntToDecimalStringN(sMonSummaryScreen->summary.curHpStrBuf, hp, STR_CONV_MODE_LEFT_ALIGN, 3);
+            StringAppend(sMonSummaryScreen->summary.curHpStrBuf, gText_Slash);
 
-    hp = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_MAX_HP);
-    ConvertIntToDecimalStringN(tempStr, hp, STR_CONV_MODE_LEFT_ALIGN, 3);
-    StringAppend(sMonSummaryScreen->summary.curHpStrBuf, tempStr);
+            hp = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_MAX_HP);
+            ConvertIntToDecimalStringN(tempStr, hp, STR_CONV_MODE_LEFT_ALIGN, 3);
+            StringAppend(sMonSummaryScreen->summary.curHpStrBuf, tempStr);
 
-    sMonSkillsPrinterXpos->curHpStr = GetNumberRightAlign63(sMonSummaryScreen->summary.curHpStrBuf);
+            sMonSkillsPrinterXpos->curHpStr = GetNumberRightAlign63(sMonSummaryScreen->summary.curHpStrBuf);
+        break;
+        case STAT_TYPE_IVS:
+            hp = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_HP_IV);
+            ConvertIntToDecimalStringN(sMonSummaryScreen->summary.curHpStrBuf, hp, STR_CONV_MODE_LEFT_ALIGN, 3);
+            sMonSkillsPrinterXpos->curHpStr = GetNumberRightAlign63(sMonSummaryScreen->summary.curHpStrBuf);
+        break;
+        case STAT_TYPE_EVS:
+            hp = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_HP_EV);
+            ConvertIntToDecimalStringN(sMonSummaryScreen->summary.curHpStrBuf, hp, STR_CONV_MODE_LEFT_ALIGN, 3);
+            sMonSkillsPrinterXpos->curHpStr = GetNumberRightAlign63(sMonSummaryScreen->summary.curHpStrBuf);
+        break;
+    }
 
     if (sMonSummaryScreen->savedCallback == CB2_ReturnToTradeMenuFromSummary && sMonSummaryScreen->isEnemyParty == TRUE)
     {
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_ATK2);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        switch(statType){
+            default:
+            case STAT_TYPE_RAW:
+                statValue_Atk   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_ATK2);
+                statValue_Def   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_DEF2);
+                statValue_SpAtk = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPATK2);
+                statValue_SpDef = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPDEF2);
+                statValue       = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPEED2);
+            break;
+            case STAT_TYPE_IVS:
+                statValue_Atk   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_ATK_IV);
+                statValue_Def   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_DEF_IV);
+                statValue_SpAtk = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPATK_IV);
+                statValue_SpDef = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPDEF_IV);
+                statValue       = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPEED_IV);
+            break;
+            case STAT_TYPE_EVS:
+                statValue_Atk   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_ATK_EV);
+                statValue_Def   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_DEF_EV);
+                statValue_SpAtk = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPATK_EV);
+                statValue_SpDef = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPDEF_EV);
+                statValue       = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPEED_EV);
+            break;
+        }
+
+        //Attack
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK], statValue_Atk, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 1)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK][0] = 0x79;
         if(minusStat == 1)
@@ -2266,8 +2345,8 @@ static void BufferMonSkills(void)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK][0] = 0x78;
         sMonSkillsPrinterXpos->atkStr = GetNumberRightAlign27(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK]);
 
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_DEF2);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        //Defense
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF], statValue_Def, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 2)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF][0] = 0x79;
         if(minusStat == 2)
@@ -2276,8 +2355,8 @@ static void BufferMonSkills(void)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF][0] = 0x78;
         sMonSkillsPrinterXpos->defStr = GetNumberRightAlign27(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF]);
 
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPATK2);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        //Special Attack
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA], statValue_SpAtk, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 4)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA][0] = 0x79;
         if(minusStat == 4)
@@ -2286,8 +2365,8 @@ static void BufferMonSkills(void)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA][0] = 0x78;
         sMonSkillsPrinterXpos->spAStr = GetNumberRightAlign27(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA]);
 
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPDEF2);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        //Special Defense
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD], statValue_SpDef, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 5)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD][0] = 0x79;
         if(minusStat == 5)
@@ -2296,7 +2375,7 @@ static void BufferMonSkills(void)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD][0] = 0x78;
         sMonSkillsPrinterXpos->spDStr = GetNumberRightAlign27(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD]);
 
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPEED2);
+        //Speed
         ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPE], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 3)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPE][0] = 0x79;
@@ -2308,8 +2387,33 @@ static void BufferMonSkills(void)
     }
     else
     {
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_ATK);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        switch(statType){
+            default:
+            case STAT_TYPE_RAW:
+                statValue_Atk   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_ATK);
+                statValue_Def   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_DEF);
+                statValue_SpAtk = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPATK);
+                statValue_SpDef = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPDEF);
+                statValue_Speed = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPEED);
+            break;
+            case STAT_TYPE_IVS:
+                statValue_Atk   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_ATK_IV);
+                statValue_Def   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_DEF_IV);
+                statValue_SpAtk = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPATK_IV);
+                statValue_SpDef = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPDEF_IV);
+                statValue_Speed = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPEED_IV);
+            break;
+            case STAT_TYPE_EVS:
+                statValue_Atk   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_ATK_EV);
+                statValue_Def   = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_DEF_EV);
+                statValue_SpAtk = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPATK_EV);
+                statValue_SpDef = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPDEF_EV);
+                statValue_Speed = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPEED_EV);
+            break;
+        }
+
+        //Attack
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK], statValue_Atk, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 1)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK][0] = 0x79;
         if(minusStat == 1)
@@ -2318,8 +2422,8 @@ static void BufferMonSkills(void)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK][0] = 0x78;
         sMonSkillsPrinterXpos->atkStr = GetNumberRightAlign27(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_ATK]);
 
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_DEF);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        //Defense
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF], statValue_Def, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 2)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF][0] = 0x79;
         if(minusStat == 2)
@@ -2328,8 +2432,8 @@ static void BufferMonSkills(void)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF][0] = 0x78;
         sMonSkillsPrinterXpos->defStr = GetNumberRightAlign27(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_DEF]);
 
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPATK);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        //Special Attack
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA], statValue_SpAtk, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 4)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA][0] = 0x79;
         if(minusStat == 4)
@@ -2338,8 +2442,8 @@ static void BufferMonSkills(void)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA][0] = 0x78;
         sMonSkillsPrinterXpos->spAStr = GetNumberRightAlign27(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPA]);
 
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPDEF);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        //Special Defense
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD], statValue_SpDef, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 5)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD][0] = 0x79;
         if(minusStat == 5)
@@ -2348,8 +2452,8 @@ static void BufferMonSkills(void)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD][0] = 0x78;
         sMonSkillsPrinterXpos->spDStr = GetNumberRightAlign27(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPD]);
 
-        statValue = GetMonData(&sMonSummaryScreen->currentMon, MON_DATA_SPEED);
-        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPE], statValue, STR_CONV_MODE_RIGHT_ALIGN, 4);
+        //Speed
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPE], statValue_Speed, STR_CONV_MODE_RIGHT_ALIGN, 4);
         if(plusStat == 3)
             sMonSummaryScreen->summary.statValueStrBufs[PSS_STAT_SPE][0] = 0x79;
         if(minusStat == 3)
@@ -3199,6 +3303,13 @@ static void PokeSum_DrawMoveTypeIcons(void)
         BlitMenuInfoIcon(sMonSummaryScreen->windowIds[5], sMonSummaryScreen->moveTypes[4] + 1, 3, GetMoveNamePrinterYpos(4));
 }
 
+const u8 sText_PokeSum_Controls_Page_Stat[] = _("{DPAD_LEFTRIGHT}PAGE {A_BUTTON}SEE STATS");
+const u8 sText_PokeSum_Controls_Page_IVs[]  = _("{DPAD_LEFTRIGHT}PAGE {A_BUTTON}SEE IVS");
+const u8 sText_PokeSum_Controls_Page_EVs[]  = _("{DPAD_LEFTRIGHT}PAGE {A_BUTTON}SEE EVS");
+
+const u8 gText_PokeSum_PageName_PokemonSkills_IVS[] = _("POKéMON IVS");
+const u8 gText_PokeSum_PageName_PokemonSkills_EVS[] = _("POKéMON EVS");
+
 static void PokeSum_PrintPageHeaderText(u8 curPageIndex)
 {
     switch (curPageIndex)
@@ -3213,8 +3324,21 @@ static void PokeSum_PrintPageHeaderText(u8 curPageIndex)
         PrintMonLevelNickOnWindow2(gText_PokeSum_NoData);
         break;
     case PSS_PAGE_SKILLS:
-        PokeSum_PrintPageName(gText_PokeSum_PageName_PokemonSkills);
-        PokeSum_PrintControlsString(gText_PokeSum_Controls_Page);
+        switch(sMonSummaryScreen->statType){
+            default:
+            case STAT_TYPE_RAW:
+                PokeSum_PrintPageName(gText_PokeSum_PageName_PokemonSkills);
+                PokeSum_PrintControlsString(sText_PokeSum_Controls_Page_IVs);
+            break;
+            case STAT_TYPE_IVS:
+                PokeSum_PrintPageName(gText_PokeSum_PageName_PokemonSkills_IVS);
+                PokeSum_PrintControlsString(sText_PokeSum_Controls_Page_EVs);
+            break;
+            case STAT_TYPE_EVS:
+                PokeSum_PrintPageName(gText_PokeSum_PageName_PokemonSkills_EVS);
+                PokeSum_PrintControlsString(sText_PokeSum_Controls_Page_Stat);
+            break;
+        }
         PrintMonLevelNickOnWindow2(gText_PokeSum_NoData);
         break;
     case PSS_PAGE_MOVES:
