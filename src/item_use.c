@@ -1,6 +1,7 @@
 #include "global.h"
 #include "gflib.h"
 #include "battle.h"
+#include "battle_anim.h"
 #include "berry_pouch.h"
 #include "berry_powder.h"
 #include "bike.h"
@@ -31,6 +32,7 @@
 #include "teachy_tv.h"
 #include "tm_case.h"
 #include "vs_seeker.h"
+#include "util.h"
 #include "constants/sound.h"
 #include "constants/items.h"
 #include "constants/item_effects.h"
@@ -756,16 +758,31 @@ void Task_ItemUse_CloseMessageBoxAndReturnToField_VsSeeker(u8 taskId)
     Task_ItemUse_CloseMessageBoxAndReturnToField(taskId);
 }
 
+static const u8 sText_CantThrowPokeBall_TwoMons[] = _("Cannot throw a ball!\nThere are two pokemon out there!\p");
 void BattleUseFunc_PokeBallEtc(u8 taskId)
 {
-    if (!IsPlayerPartyAndPokemonStorageFull())
+    switch (CanThrowBall())
+    {
+    case 0: // usable
+    default:
+        RemoveBagItem(gSpecialVar_ItemId, 1);
+        ItemMenu_StartFadeToExitCallback(taskId);
+        break;
+    case 1:  // There are two present pokemon.
+        DisplayItemMessageInBag(taskId, 1, sText_CantThrowPokeBall_TwoMons, Task_ReturnToBagFromContextMenu);
+        break;
+    case 2: // No room for mon
+        DisplayItemMessageInBag(taskId, 1, gText_BoxFull, Task_ReturnToBagFromContextMenu);
+        break;
+    }
+    /*if (!IsPlayerPartyAndPokemonStorageFull())
     {
         RemoveBagItem(gSpecialVar_ItemId, 1);
         Bag_BeginCloseWin0Animation();
         ItemMenu_StartFadeToExitCallback(taskId);
     }
     else
-        DisplayItemMessageInBag(taskId, FONT_NORMAL, gText_BoxFull, Task_ReturnToBagFromContextMenu);
+        DisplayItemMessageInBag(taskId, FONT_NORMAL, gText_BoxFull, Task_ReturnToBagFromContextMenu);*/
 }
 
 void BattleUseFunc_PokeFlute(u8 taskId)
@@ -950,4 +967,31 @@ void ItemUseOutOfBattle_ReduceEV(u8 taskId)
 {
     gItemUseCB = ItemUseCB_ReduceEV;
     DoSetUpItemUseCallback(taskId);
+}
+
+bool32 IsBattlerAlive(u32 battler)
+{
+    if (gBattleMons[battler].hp == 0)
+        return FALSE;
+    else if (battler >= gBattlersCount)
+        return FALSE;
+    else if (gAbsentBattlerFlags & gBitTable[battler])
+        return FALSE;
+    else
+        return TRUE;
+}
+
+u32 CanThrowBall(void)
+{
+    if (IsBattlerAlive(GetBattlerAtPosition(B_POSITION_OPPONENT_LEFT))
+        && IsBattlerAlive(GetBattlerAtPosition(B_POSITION_OPPONENT_RIGHT))) 
+    {
+        return 1;   // There are two present pokemon.
+    }
+    else if (IsPlayerPartyAndPokemonStorageFull() == TRUE)
+    {
+        return 2;   // No room for mon
+    }
+    
+    return 0;   // usable 
 }

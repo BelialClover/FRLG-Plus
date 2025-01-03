@@ -360,5 +360,8 @@
 #define HP_EMPTY_SLOT 0xFFFF
 
 #define B_BATTLE_SPEED VAR_BATTLE_SPEED // Usage with a variable
+// Last Used Ball
+#define B_LAST_USED_BALL            TRUE        // If TRUE, the "last used ball" feature from Gen 7 will be implemented
+#define B_LAST_USED_BALL_BUTTON     R_BUTTON    // If last used ball is implemented, this button (or button combo) will trigger throwing the last used ball.
 
 #endif // GUARD_CONSTANTS_BATTLE_H

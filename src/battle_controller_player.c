@@ -229,6 +229,7 @@ static void HandleInputChooseAction(void)
     if (JOY_NEW(A_BUTTON))
     {
         PlaySE(SE_SELECT);
+        TryHideLastUsedBall();
 
         switch (gActionSelectionCursor[gActiveBattler])
         {
@@ -321,6 +322,15 @@ static void HandleInputChooseAction(void)
     {
         SwapHpBarsWithHpText();
     }
+    #if B_LAST_USED_BALL == TRUE
+    else if (JOY_NEW(B_LAST_USED_BALL_BUTTON) && CanThrowLastUsedBall())
+    {
+        PlaySE(SE_SELECT);
+        TryHideLastUsedBall();
+        BtlController_EmitTwoReturnValues(1, B_ACTION_THROW_BALL, 0);
+        PlayerBufferExecCompleted();
+    }
+    #endif
 }
 
 // Unused
@@ -355,6 +365,7 @@ static void HandleInputChooseTarget(void)
         gSprites[gBattlerSpriteIds[gMultiUsePlayerCursor]].callback = SpriteCB_HideAsMoveTarget;
         BtlController_EmitTwoReturnValues(1, 10, gMoveSelectionCursor[gActiveBattler] | (gMultiUsePlayerCursor << 8));
         EndBounceEffect(gMultiUsePlayerCursor, BOUNCE_HEALTHBOX);
+        TryHideLastUsedBall();
         PlayerBufferExecCompleted();
     }
     else if (JOY_NEW(B_BUTTON))
@@ -500,6 +511,7 @@ void HandleInputChooseMove(void)
         if (!canSelectTarget)
         {
             BtlController_EmitTwoReturnValues(1, 10, gMoveSelectionCursor[gActiveBattler] | (gMultiUsePlayerCursor << 8));
+            TryHideLastUsedBall();
             PlayerBufferExecCompleted();
         }
         else
@@ -2455,6 +2467,8 @@ static void PlayerHandleChooseAction(void)
     BattlePutTextOnWindow(gText_BattleMenu, B_WIN_ACTION_MENU);
     for (i = 0; i < 4; ++i)
         ActionSelectionDestroyCursorAt(i);
+    
+    TryRestoreLastUsedBall();
     ActionSelectionCreateCursorAt(gActionSelectionCursor[gActiveBattler], 0);
     BattleStringExpandPlaceholdersToDisplayedString(gText_WhatWillPkmnDo);
     BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_ACTION_PROMPT);
