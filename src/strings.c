@@ -773,6 +773,7 @@ const u8 gText_OptionMenuCancel[] = _("CANCEL");
 const u8 gText_OptionMenuSaveAndExit[]= _("SAVE AND EXIT");
 const u8 gText_OptionMenuBattleAnimSpeed[] = _("BATTLE ANIM SPEED");
 const u8 gText_BattleTransitions[] = _("BATTLE TRANSITIONS");
+const u8 gText_BattleSpeed[] = _("BATTLE SPEED");
 const u8 gText_BattleIntroAnimation[] = _("BATTLE INTRO ANIM");
 const u8 gText_MoveAnims[] = _("MOVE ANIMATIONS");
 const u8 gText_HpBarAnimSpeed[] = _("HP BAR ANIM SPEED");

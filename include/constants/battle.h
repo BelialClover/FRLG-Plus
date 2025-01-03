@@ -354,8 +354,11 @@
 
 #define B_TEXT_FLAG_NPC_CONTEXT_FONT    (1 << 6)
 #define B_TEXT_FLAG_WINDOW_CLEAR        (1 << 7)
+#define BATTLE_TYPE_RECORDED           (1 << 24)
 
 // Indicator for the party summary bar to display an empty slot.
 #define HP_EMPTY_SLOT 0xFFFF
+
+#define B_BATTLE_SPEED VAR_BATTLE_SPEED // Usage with a variable
 
 #endif // GUARD_CONSTANTS_BATTLE_H

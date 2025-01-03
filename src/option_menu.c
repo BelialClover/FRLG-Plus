@@ -11,6 +11,7 @@
 #include "event_data.h"
 #include "field_fadetransition.h"
 #include "gba/m4a_internal.h"
+#include "constants/battle.h"
 
 // can't include the one in menu_helpers.h since Task_OptionMenu needs bool32 for matching
 bool32 IsActiveOverworldLinkBusy(void);
@@ -30,7 +31,8 @@ enum
 
 enum
 {
-    MENUITEM_BATTLETRANSITIONS = 0,
+    MENUITEM_BATTLE_SPEED = 0,
+    MENUITEM_BATTLETRANSITIONS,
     MENUITEM_BATTLEINTROANIM,
     MENUITEM_MOVEANIMATIONS,
     MENUITEM_HPBARANIMSPEED,
@@ -146,7 +148,7 @@ static const struct BgTemplate sOptionMenuBgTemplates[] =
 
 static const u16 sOptionMenuPalette[] = INCBIN_U16("graphics/misc/option_menu.gbapal");
 static const u16 sOptionMenuItemCounts[MENUITEM_COUNT]     = {4, 1, 3, 2, 3, 11, 0};
-static const u16 sOptionSubMenuItemCounts[MENUITEM_COUNT2] = {2, 2, 2, 4, 2, 0};
+static const u16 sOptionSubMenuItemCounts[MENUITEM_COUNT2] = {4, 2, 2, 2, 4,  2, 0};
 
 static const u8 *const sOptionMenuItemsNames[MENUITEM_COUNT] =
 {
@@ -162,6 +164,7 @@ static const u8 *const sOptionMenuItemsNames[MENUITEM_COUNT] =
 static const u8 *const sOptionSubmenuItemsNames[MENUITEM_COUNT2] =
 {
     [MENUITEM_BATTLETRANSITIONS] = gText_BattleTransitions,
+    [MENUITEM_BATTLE_SPEED] = gText_BattleSpeed,
     [MENUITEM_BATTLEINTROANIM] = gText_BattleIntroAnimation,
     [MENUITEM_MOVEANIMATIONS] = gText_MoveAnims,
     [MENUITEM_HPBARANIMSPEED] = gText_HpBarAnimSpeed,
@@ -169,6 +172,17 @@ static const u8 *const sOptionSubmenuItemsNames[MENUITEM_COUNT2] =
     [MENUITEM_BACK] = gText_Back,
 };
 
+const u8 sText_BattleSpeed_x1[] = _("SPEED x1");
+const u8 sText_BattleSpeed_x2[] = _("SPEED x2");
+const u8 sText_BattleSpeed_x3[] = _("SPEED x3");
+const u8 sText_BattleSpeed_x4[] = _("SPEED x4");
+static const u8 *const sBattleSpeedOptions[] =
+{
+    sText_BattleSpeed_x1, 
+    sText_BattleSpeed_x2, 
+    sText_BattleSpeed_x3,
+    sText_BattleSpeed_x4
+};
 
 static const u8 *const sTextSpeedOptions[] =
 {
@@ -273,6 +287,7 @@ void CB2_OptionsMenuFromStartMenu(void)
     sOptionMenuPtr->option[MENUITEM_BUTTONMODE] = gSaveBlock2Ptr->optionsButtonMode;
     sOptionMenuPtr->option[MENUITEM_FRAMETYPE] = gSaveBlock2Ptr->optionsWindowFrameType;
     sOptionMenuPtr->subOption[MENUITEM_BATTLETRANSITIONS] = gSaveBlock2Ptr->optionsBattleTransitions;
+    sOptionMenuPtr->subOption[MENUITEM_BATTLE_SPEED] = VarGet(B_BATTLE_SPEED);
     sOptionMenuPtr->subOption[MENUITEM_BATTLEINTROANIM] = gSaveBlock2Ptr->optionsBattleIntroAnim;
     sOptionMenuPtr->subOption[MENUITEM_MOVEANIMATIONS] = gSaveBlock2Ptr->optionsBattleSceneOff;
     sOptionMenuPtr->subOption[MENUITEM_HPBARANIMSPEED] = gSaveBlock2Ptr->optionsHpBarAnimSpeed;
@@ -697,6 +712,9 @@ static void BufferOptionMenuString(u8 selection)
             case MENUITEM_BATTLETRANSITIONS:
                 AddTextPrinterParameterized3(1, FONT_NORMAL, x, y, dst, -1, sBattleTransitionOptions[sOptionMenuPtr->subOption[selection]]);
                 break;
+            case MENUITEM_BATTLE_SPEED:
+                AddTextPrinterParameterized3(1, FONT_NORMAL, x, y, dst, -1, sBattleSpeedOptions[sOptionMenuPtr->subOption[selection]]);
+                break;
             case MENUITEM_BATTLEINTROANIM:
                 AddTextPrinterParameterized3(1, FONT_NORMAL, x, y, dst, -1, sBattleIntroAnimOptions[sOptionMenuPtr->subOption[selection]]);
                 break;
@@ -720,6 +738,7 @@ static void BufferOptionMenuString(u8 selection)
 
 static void CloseAndSaveOptionMenu(u8 taskId)
 {
+    u8 battleSpeed = sOptionMenuPtr->subOption[MENUITEM_BATTLE_SPEED];
     gFieldCallback = FieldCB_DefaultWarpExit;
     SetMainCallback2(gMain.savedCallback);
     FreeAllWindowBuffers();
@@ -730,6 +749,7 @@ static void CloseAndSaveOptionMenu(u8 taskId)
     gSaveBlock2Ptr->optionsWindowFrameType = sOptionMenuPtr->option[MENUITEM_FRAMETYPE];
 
     gSaveBlock2Ptr->optionsBattleTransitions = sOptionMenuPtr->subOption[MENUITEM_BATTLETRANSITIONS];
+    VarSet(B_BATTLE_SPEED, battleSpeed);
     gSaveBlock2Ptr->optionsBattleIntroAnim = sOptionMenuPtr->subOption[MENUITEM_BATTLEINTROANIM];
     gSaveBlock2Ptr->optionsBattleSceneOff = sOptionMenuPtr->subOption[MENUITEM_MOVEANIMATIONS];
     gSaveBlock2Ptr->optionsHpBarAnimSpeed = sOptionMenuPtr->subOption[MENUITEM_HPBARANIMSPEED];

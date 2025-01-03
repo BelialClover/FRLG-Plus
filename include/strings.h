@@ -933,6 +933,7 @@ extern const u8 gText_OptionMenuCancel[];
 extern const u8 gText_OptionMenuSaveAndExit[];
 extern const u8 gText_OptionMenuBattleAnimSpeed[];
 extern const u8 gText_BattleTransitions[];
+extern const u8 gText_BattleSpeed[];
 extern const u8 gText_BattleIntroAnimation[];
 extern const u8 gText_MoveAnims[];
 extern const u8 gText_HpBarAnimSpeed[];

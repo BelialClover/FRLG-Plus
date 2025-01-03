@@ -95,4 +95,7 @@ void RunBattleScriptCommands_PopCallbacksStack(void);
 void RunBattleScriptCommands(void);
 bool8 TryRunFromBattle(u8 battler);
 
+bool32 InBattleChoosingMoves();
+bool32 InBattleRunningActions();
+
 #endif // GUARD_BATTLE_MAIN_H
