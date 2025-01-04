@@ -2458,6 +2458,69 @@ static void HandleChooseActionAfterDma3(void)
     }
 }
 
+const u8 sText_EnemyPkmnTempHP[] = _("{STR_VAR_1}-{STR_VAR_2}");
+const u8 sText_EnemyPkmnTemp[]   = _("{STR_VAR_1},{STR_VAR_2}");
+const u8 sText_EnemyPkmnInfo[]   = _("{STR_VAR_1} HP:{STR_VAR_2}\nIVs:({STR_VAR_3})");
+
+const u8 sText_EnemyPkmnTemp2[] = _("{STR_VAR_1},{STR_VAR_2},{STR_VAR_3}");
+extern const u8 *const gNatureNamePointers[];
+
+static void PutPkmnIvsIntoStringVar3(u8 battler){
+    struct Pokemon *mon = &gEnemyParty[battler];
+    u8 hpIVs, atkIVs, defIVs, spAtkIvs, spDefIvs, speedIvs;
+    u8 power, powerBits;
+    u8 nature = GetNature(mon);
+    u8 hpType = GetHiddenPowerType(mon);
+
+    hpIVs    = GetMonData(mon, MON_DATA_HP_IV,    NULL);
+    atkIVs   = GetMonData(mon, MON_DATA_ATK_IV,   NULL);
+    defIVs   = GetMonData(mon, MON_DATA_DEF_IV,   NULL);
+    spAtkIvs = GetMonData(mon, MON_DATA_SPATK_IV, NULL);
+    spDefIvs = GetMonData(mon, MON_DATA_SPDEF_IV, NULL);
+    speedIvs = GetMonData(mon, MON_DATA_SPEED,    NULL);
+
+	ConvertIntToDecimalStringN(gStringVar1, hpIVs,  STR_CONV_MODE_LEFT_ALIGN, 2);
+	ConvertIntToDecimalStringN(gStringVar2, atkIVs, STR_CONV_MODE_LEFT_ALIGN, 2);
+	ConvertIntToDecimalStringN(gStringVar3, defIVs, STR_CONV_MODE_LEFT_ALIGN, 2);
+	StringExpandPlaceholders(gStringVar4, sText_EnemyPkmnTemp2);
+    StringCopy(gStringVar1, gStringVar4);
+    
+	ConvertIntToDecimalStringN(gStringVar2, spAtkIvs, STR_CONV_MODE_LEFT_ALIGN, 2);
+	ConvertIntToDecimalStringN(gStringVar3, spDefIvs, STR_CONV_MODE_LEFT_ALIGN, 2);
+	StringExpandPlaceholders(gStringVar4, sText_EnemyPkmnTemp2);
+    StringCopy(gStringVar1, gStringVar4);
+
+	ConvertIntToDecimalStringN(gStringVar2, speedIvs, STR_CONV_MODE_LEFT_ALIGN, 2);
+	StringExpandPlaceholders(gStringVar3, sText_EnemyPkmnTemp);
+}
+
+static void PutPkmnInfoIntoStringVar4(u8 battler){
+    struct Pokemon *mon = &gEnemyParty[battler];
+    u8 power, powerBits;
+    u8 nature = GetNature(mon);
+    u8 hpType = GetHiddenPowerType(mon);
+
+    PutPkmnIvsIntoStringVar3(battler);
+
+    powerBits = ((GetMonData(mon, MON_DATA_HP_IV)    & 2) >> 1)
+                 | ((GetMonData(mon, MON_DATA_ATK_IV)   & 2) << 0)
+                 | ((GetMonData(mon, MON_DATA_DEF_IV)   & 2) << 1)
+                 | ((GetMonData(mon, MON_DATA_SPEED_IV) & 2) << 2)
+                 | ((GetMonData(mon, MON_DATA_SPATK_IV) & 2) << 3)
+                 | ((GetMonData(mon, MON_DATA_SPDEF_IV) & 2) << 4);
+            
+    power = (40 * powerBits) / 63 + 30;
+
+    StringCopy(gStringVar1, gTypeNames[hpType]);
+	ConvertIntToDecimalStringN(gStringVar2, power, STR_CONV_MODE_LEFT_ALIGN, 2);
+	StringExpandPlaceholders(gStringVar4, sText_EnemyPkmnTempHP);
+    StringCopy(gStringVar2, gStringVar4);
+
+    StringCopy(gStringVar1, gNatureNamePointers[nature]);
+    
+	StringExpandPlaceholders(gStringVar4, sText_EnemyPkmnInfo);
+}
+
 static void PlayerHandleChooseAction(void)
 {
     s32 i;
@@ -2470,8 +2533,16 @@ static void PlayerHandleChooseAction(void)
     
     TryRestoreLastUsedBall();
     ActionSelectionCreateCursorAt(gActionSelectionCursor[gActiveBattler], 0);
-    BattleStringExpandPlaceholdersToDisplayedString(gText_WhatWillPkmnDo);
-    BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_ACTION_PROMPT);
+    if(!(gBattleTypeFlags & BATTLE_TYPE_TRAINER)){
+        PutPkmnInfoIntoStringVar4(0);
+        //BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_ACTION_PROMPT);
+        BattlePutTextOnWindowWithFont(gStringVar4, B_WIN_ACTION_PROMPT, FONT_SMALL);
+        //BattleStringExpandPlaceholdersToDisplayedString(gStringVar4);
+    }
+    else{
+        BattleStringExpandPlaceholdersToDisplayedString(gText_WhatWillPkmnDo);
+        BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_ACTION_PROMPT);
+    }
 }
 
 static void PlayerHandleUnknownYesNoBox(void)

@@ -2763,6 +2763,91 @@ void BattlePutTextOnWindow(const u8 *text, u8 windowId) {
     }
 }
 
+void BattlePutTextOnWindowWithFont(const u8 *text, u8 windowId, u8 font) {
+    bool32 copyToVram;
+    struct TextPrinterTemplate printerTemplate;
+    u8 speed;
+    int x;
+    u8 color;
+
+    u8 textFlags = windowId & 0xC0;
+    windowId &= 0x3F;
+    if (!(textFlags & 0x80))
+        FillWindowPixelBuffer(windowId, sTextOnWindowsInfo_Normal[windowId].fillValue);
+    if (textFlags & 0x40) {
+        color = ContextNpcGetTextColor();
+        printerTemplate.fontId = font;
+    }
+    else {
+        printerTemplate.fontId = font;
+    }
+    switch (windowId)
+    {
+    case B_WIN_VS_PLAYER:
+    case B_WIN_VS_OPPONENT:
+    case B_WIN_VS_MULTI_PLAYER_1:
+    case B_WIN_VS_MULTI_PLAYER_2:
+    case B_WIN_VS_MULTI_PLAYER_3:
+    case B_WIN_VS_MULTI_PLAYER_4:
+        x = (48 - GetStringWidth(font, text,
+                                 sTextOnWindowsInfo_Normal[windowId].letterSpacing)) / 2;
+        break;
+    case B_WIN_VS_OUTCOME_DRAW:
+    case B_WIN_VS_OUTCOME_LEFT:
+    case B_WIN_VS_OUTCOME_RIGHT:
+        x = (64 - GetStringWidth(font, text,
+                                 sTextOnWindowsInfo_Normal[windowId].letterSpacing)) / 2;
+        break;
+    default:
+        x = sTextOnWindowsInfo_Normal[windowId].x;
+        break;
+    }
+    if (x < 0)
+        x = 0;
+    printerTemplate.currentChar = text;
+    printerTemplate.windowId = windowId;
+    printerTemplate.x = x;
+    printerTemplate.y = sTextOnWindowsInfo_Normal[windowId].y;
+    printerTemplate.currentX = printerTemplate.x;
+    printerTemplate.currentY = printerTemplate.y;
+    printerTemplate.letterSpacing = sTextOnWindowsInfo_Normal[windowId].letterSpacing;
+    printerTemplate.lineSpacing = sTextOnWindowsInfo_Normal[windowId].lineSpacing;
+    printerTemplate.unk = 0;
+    printerTemplate.fgColor = sTextOnWindowsInfo_Normal[windowId].fgColor;
+    printerTemplate.bgColor = sTextOnWindowsInfo_Normal[windowId].bgColor;
+    printerTemplate.shadowColor = sTextOnWindowsInfo_Normal[windowId].shadowColor;
+    if (windowId == B_WIN_OAK_OLD_MAN)
+        gTextFlags.useAlternateDownArrow = FALSE;
+    else
+        gTextFlags.useAlternateDownArrow = TRUE;
+
+    if ((gBattleTypeFlags & BATTLE_TYPE_LINK) || ((gBattleTypeFlags & BATTLE_TYPE_POKEDUDE) && windowId != B_WIN_OAK_OLD_MAN))
+        gTextFlags.autoScroll = TRUE;
+    else
+        gTextFlags.autoScroll = FALSE;
+
+    if (windowId == B_WIN_MSG || windowId == B_WIN_OAK_OLD_MAN)
+    {
+        if (gBattleTypeFlags & BATTLE_TYPE_LINK)
+            speed = 1;
+        else
+            speed = GetTextSpeedSetting();
+        gTextFlags.canABSpeedUpPrint = TRUE;
+    }
+    else
+    {
+        speed = sTextOnWindowsInfo_Normal[windowId].speed;
+        gTextFlags.canABSpeedUpPrint = FALSE;
+    }
+
+    AddTextPrinter(&printerTemplate, speed, NULL);
+    if (!(textFlags & 0x80))
+    {
+        PutWindowTilemap(windowId);
+        CopyWindowToVram(windowId, COPYWIN_FULL);
+    }
+}
+
 bool8 BattleStringShouldBeColored(u16 stringId)
 {
     if (stringId == STRINGID_TRAINER1LOSETEXT
