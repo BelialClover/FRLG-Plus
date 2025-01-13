@@ -2553,6 +2553,9 @@ static const struct SpriteSheet sSpriteSheet_LastUsedBallWindow =
 
 bool32 CanThrowLastUsedBall(void)
 {
+    if(gItems[gLastThrownBall].pocket != POCKET_POKE_BALLS)
+        return FALSE;
+
     #if B_LAST_USED_BALL == FALSE
         return FALSE;
     #else
@@ -2570,9 +2573,11 @@ static const struct SpritePalette sSpritePalette_AbilityPopUp =
 
 void TryAddLastUsedBallItemSprites(void)
 {
+
     #if B_LAST_USED_BALL == TRUE
-    if (gLastThrownBall == 0
-      || (gLastThrownBall != 0 && !CheckBagHasItem(gLastThrownBall, 1)))
+    if (gLastThrownBall == ITEM_NONE 
+      || gItems[gLastThrownBall].pocket != POCKET_POKE_BALLS
+      || (gLastThrownBall != ITEM_NONE && !CheckBagHasItem(gLastThrownBall, 1)))
     {
         // we're out of the last used ball, so just set it to the first ball in the bag
         // we have to compact the bag first bc it is typically only compacted when you open it
@@ -2581,6 +2586,7 @@ void TryAddLastUsedBallItemSprites(void)
     }
 
     if (CanThrowBall() != 0
+     || gItems[gLastThrownBall].pocket != POCKET_POKE_BALLS
      || (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
      || !CheckBagHasItem(gLastThrownBall, 1))
         return;

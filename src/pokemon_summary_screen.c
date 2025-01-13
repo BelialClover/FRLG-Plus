@@ -1213,11 +1213,17 @@ static void Task_InputHandler_Info(u8 taskId)
             {
                 if (sMonSummaryScreen->curPageIndex == PSS_PAGE_INFO)
                 {
-                    //Toogle Pokerus
-                    PlaySE(SE_SELECT);
-                    TooglePokerus();
-                    CreateTask(Task_PokeSum_SwitchDisplayedPokemon, 0);
-                    sMonSummaryScreen->state3270 = PSS_STATE3270_HANDLEINPUT;
+                    if(!sMonSummaryScreen->isBoxMon && !sMonSummaryScreen->isEgg){
+                        //Toogle Pokerus
+                        PlaySE(SE_SELECT);
+                        TooglePokerus();
+                        CreateTask(Task_PokeSum_SwitchDisplayedPokemon, 0);
+                        sMonSummaryScreen->state3270 = PSS_STATE3270_HANDLEINPUT;
+                    }
+                    else{
+                        PlaySE(SE_SELECT);
+                        sMonSummaryScreen->state3270 = PSS_STATE3270_ATEXIT_FADEOUT;
+                    }
                 }
                 else if (sMonSummaryScreen->curPageIndex == PSS_PAGE_SKILLS)
                 {
@@ -3310,13 +3316,17 @@ const u8 sText_PokeSum_Controls_Page_EVs[]  = _("{DPAD_LEFTRIGHT}PAGE {A_BUTTON}
 const u8 gText_PokeSum_PageName_PokemonSkills_IVS[] = _("POKéMON IVS");
 const u8 gText_PokeSum_PageName_PokemonSkills_EVS[] = _("POKéMON EVS");
 
+const u8 gText_PokeSum_Controls_PageCancelPokerus[] = _("{DPAD_RIGHT}PAGE {A_BUTTON}POKERUS");
+
 static void PokeSum_PrintPageHeaderText(u8 curPageIndex)
 {
     switch (curPageIndex)
     {
     case PSS_PAGE_INFO:
         PokeSum_PrintPageName(gText_PokeSum_PageName_PokemonInfo);
-        if (!sMonSummaryScreen->isEgg)
+        if (!sMonSummaryScreen->isEgg && !sMonSummaryScreen->isBoxMon)
+            PokeSum_PrintControlsString(gText_PokeSum_Controls_PageCancelPokerus);
+        else if(!sMonSummaryScreen->isEgg)
             PokeSum_PrintControlsString(gText_PokeSum_Controls_PageCancel);
         else
             PokeSum_PrintControlsString(gText_PokeSum_Controls_Cancel);

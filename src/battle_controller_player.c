@@ -2477,7 +2477,7 @@ static void PutPkmnIvsIntoStringVar3(u8 battler){
     defIVs   = GetMonData(mon, MON_DATA_DEF_IV,   NULL);
     spAtkIvs = GetMonData(mon, MON_DATA_SPATK_IV, NULL);
     spDefIvs = GetMonData(mon, MON_DATA_SPDEF_IV, NULL);
-    speedIvs = GetMonData(mon, MON_DATA_SPEED,    NULL);
+    speedIvs = GetMonData(mon, MON_DATA_SPEED_IV, NULL);
 
 	ConvertIntToDecimalStringN(gStringVar1, hpIVs,  STR_CONV_MODE_LEFT_ALIGN, 2);
 	ConvertIntToDecimalStringN(gStringVar2, atkIVs, STR_CONV_MODE_LEFT_ALIGN, 2);
